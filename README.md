@@ -5,12 +5,19 @@ Un panel de control personalizable y modular, diseñado con el fin de aprovechar
 ## *Características principales*
 
 - *Gestión de Música:* Reproductor local con soporte para listas de reproducción, navegación por artistas/géneros y control de volumen.
+(https://github.com/esteban78009/Secondary-monitor-Control-panel/blob/313675206a712351da82f4013d147b51a2ff925e/screenshots/musica.png)
 
 - *Monitoreo de Sistema:* Visualización en tiempo real del uso de CPU, RAM, almacenamiento y temperaturas (integración con OpenHardwareMonitor).
 
+(https://github.com/esteban78009/Secondary-monitor-Control-panel/blob/313675206a712351da82f4013d147b51a2ff925e/screenshots/monitorizacion.png)
+
 - *Gestor de Wallpapers:* Configuración avanzada de fondos de pantalla con integración completa para múltiples monitores.
 
-- *Sistema de Addons:* Arquitectura extensible que permite crear y cargar nuevas secciones de forma dinámica sin modificar el núcleo del programa.
+(https://github.com/esteban78009/Secondary-monitor-Control-panel/blob/313675206a712351da82f4013d147b51a2ff925e/screenshots/wallpaper.png)
+
+- *Sistema de Addons:* Arquitectura extensible que permite crear y cargar nuevas secciones de forma dinámica sin modificar el núcleo del programa , viene integrado con un addon de pomodoro.
+
+(https://github.com/esteban78009/Secondary-monitor-Control-panel/blob/313675206a712351da82f4013d147b51a2ff925e/screenshots/pomodoro.png)
 
 - *Interfaz Táctil Amigable:* Diseñado con PySide6 para ser responsivo y fácil de usar en pantallas pequeñas o táctiles.
 
@@ -28,8 +35,8 @@ Ademas es necesario tener descargado OpenHardwareMonitor y tenerlo en segundo pl
 Clona el repositorio:
 
 ```bash
-git clone https://github.com/tu-usuario/nombre-de-tu-repo.git
-cd nombre-de-tu-repo
+git clone https://github.com/esteban78009/Secondary-monitor-Control-panel.git
+cd Secondary-monitor-Control-panel
 ```
 
 ```bash
