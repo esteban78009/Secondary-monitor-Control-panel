@@ -559,7 +559,6 @@ class WallpaperConfiguratorWindow(QMainWindow):
         settings = QSettings("EstebanApps", "PanelDeControl")
         saved_project = settings.value("yasb/project_path", "")
 
-
         ruta_a_cargar = project_dir if project_dir else saved_project
 
         if ruta_a_cargar and Path(ruta_a_cargar).exists():
@@ -648,7 +647,8 @@ class WallpaperConfiguratorWindow(QMainWindow):
         self.wallpaper_panel.set_mode(index)
 
     def refresh_monitors(self) -> None:
-        self._monitors = detect_monitors()
+        monitors = detect_monitors()
+        self._monitors = sorted(monitors, key=lambda m: m.x)
         self.config_manager.sync_monitor_count(len(self._monitors))
         self.config_manager.save()
         self.monitor_map.set_monitors(self._monitors)
@@ -682,25 +682,25 @@ class WallpaperConfiguratorWindow(QMainWindow):
             QMessageBox.warning(self, "Proyecto inválido", str(exc))
             return
 
-
         from PySide6.QtCore import QSettings
         settings = QSettings("EstebanApps", "PanelDeControl")
         settings.setValue("yasb/project_path", folder)
+        settings.sync() 
 
         self.top_bar.status_label.setText(f"Vinculado a: {folder}")
         self.top_bar.unlink_btn.setVisible(True)
         self.refresh_monitors()
 
-    def _on_unlink_clicked(self) -> None:
 
+    def _on_unlink_clicked(self) -> None:
         from PySide6.QtCore import QSettings
         settings = QSettings("EstebanApps", "PanelDeControl")
         settings.remove("yasb/project_path")
+        settings.sync()  # Fuerza la eliminación en el registro
 
         self.config_manager.unlink_project()
         self.top_bar.status_label.setText("Modo: standalone (sin proyecto YASB vinculado)")
         self.top_bar.unlink_btn.setVisible(False)
-        
 
         self.wallpaper_panel.setEnabled(False)
         self.wallpaper_panel.header.setText("Selecciona un monitor")
