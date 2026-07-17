@@ -1,0 +1,140 @@
+/* =======================================================
+   TEMA: NEON DARK PURPLE (Alto Contraste)
+   ======================================================= */
+
+/* --- GENERAL --- */
+QWidget {
+    background-color: #0A0510; /* Base súper oscura, casi negro-violeta */
+    color: #FFFFFF; /* Blanco puro para máximo contraste */
+    font-family: "Segoe UI", Arial, sans-serif;
+}
+
+/* --- SCROLL AREAS --- */
+QScrollArea, QScrollArea > QWidget > QWidget {
+    background-color: transparent;
+    border: none;
+}
+QScrollBar:vertical {
+    background: #140A21;
+    width: 10px;
+    border-radius: 5px;
+}
+QScrollBar::handle:vertical {
+    background: #301952;
+    border-radius: 5px;
+}
+QScrollBar::handle:vertical:hover {
+    background: #7D2AE8; /* Morado eléctrico al pasar el mouse */
+}
+
+/* --- BOTONES (Generales) --- */
+QPushButton {
+    background-color: #140A21; /* Morado muy oscuro */
+    border: 1px solid #301952; /* Borde morado medio */
+    color: #F0E6FF; /* Blanco con un levísimo tinte violeta */
+}
+QPushButton:hover {
+    background-color: #1E0F33;
+    border: 1px solid #9D00FF; /* Morado neón brillante */
+}
+QPushButton:pressed, QPushButton:checked {
+    background-color: #7D2AE8; /* Morado eléctrico sólido */
+    color: #FFFFFF;
+    border: 1px solid #7D2AE8;
+}
+
+/* --- INPUTS Y COMBOBOX --- */
+QLineEdit, QComboBox {
+    background-color: #0F0818;
+    border: 1px solid #301952;
+    color: #FFFFFF;
+    padding: 6px;
+    border-radius: 6px;
+}
+QLineEdit:focus, QComboBox:focus {
+    border: 1px solid #9D00FF; /* Resplandor morado al escribir */
+    background-color: #140A21;
+}
+QComboBox::drop-down {
+    border: none;
+}
+
+/* --- SLIDERS --- */
+QSlider::groove:horizontal {
+    height: 6px;
+    background: #1E0F33;
+    border-radius: 3px;
+}
+QSlider::handle:horizontal {
+    background: #9D00FF; /* Morado neón */
+    width: 14px;
+    margin: -4px 0;
+    border-radius: 7px;
+}
+
+/* --- PANELES ESPECÍFICOS Y BORDES --- */
+#addWebPagePanel, #selectorTemaPanel, #sidebarWidget, #panelDerechoPlayer, #panelControlesCrear, #grupoTiemposPomodoro, #grupoAlarmaPomodoro, #grupoPerfilesPomodoro {
+    background-color: #12091E; /* Un poco más claro que el fondo para separarlo */
+    border: 1px solid #301952;
+    border-radius: 10px;
+}
+
+/* Reloj del Pomodoro */
+#panelIzquierdoPomodoro {
+    background-color: #0A0510;
+    border: 2px solid #301952;
+}
+
+/* Carátula de música */
+#lblCaratulaPlayer {
+    background-color: #12091E;
+    border: 2px dashed #7D2AE8;
+    color: #A995C7;
+}
+
+/* Separador del Monitor */
+#monitorSeparador {
+    color: #301952;
+    background-color: #301952;
+}
+
+/* --- PROPIEDADES DINÁMICAS Y ESTADOS (Colores semánticos de Alto Contraste) --- */
+
+/* Acciones Destructivas / Eliminar / Rojo-Rosa Neón */
+QPushButton[estado="editando"], #btnDelete, #btnCancelar, #btnEliminarPlaylist, #btnPlaylistRem, #btnSelectorMenos {
+    background-color: #FF0055; /* Rosa neón hiper destructivo */
+    color: #FFFFFF;
+    border: none;
+}
+QPushButton[estado="editando"]:hover, #btnDelete:hover, #btnCancelar:hover, #btnEliminarPlaylist:hover {
+    background-color: #CC0044; /* Rosa un poco más oscuro */
+}
+
+/* Acciones Positivas / Guardar / Verde Neón o Cyan */
+#btnAceptar, #btnGuardarPlaylist, #btnGuardarPerfil, #btnAplicarTema, #btnSelectorMas {
+    background-color: #00E676; /* Verde neón muy brillante */
+    color: #000000; /* Texto negro para que resalte brutalmente */
+    border: none;
+}
+#btnAceptar:hover, #btnGuardarPlaylist:hover, #btnGuardarPerfil:hover, #btnAplicarTema:hover {
+    background-color: #00B25C;
+}
+
+/* Pomodoro: Estados del botón iniciar (Colores vibrantes) */
+#btnIniciarPomodoro[estado="corriendo"] {
+    background-color: #00E676; /* Verde Neón */
+    color: #000000;
+}
+#btnIniciarPomodoro[estado="pausado"] {
+    background-color: #FFEA00; /* Amarillo Eléctrico */
+    color: #000000;
+}
+#btnIniciarPomodoro[estado="finalizado"] {
+    background-color: #00E5FF; /* Cyan Neón */
+    color: #000000;
+}
+
+/* Etiquetas y Textos secundarios (Grisáceo-violeta claro) */
+#lblGenerosEstado, #lblRutaAlarma {
+    color: #A995C7; 
+}

@@ -1,0 +1,131 @@
+/* =======================================================
+   TEMA: NEON SOFT PURPLE (Base más clara y mayor contraste)
+   ======================================================= */
+
+/* --- GENERAL --- */
+QWidget {
+    background-color: #1A1226; /* Violeta muy oscuro, permite ver mejor las formas */
+    color: #F8F4FF; /* Blanco con un toque de lila, menos agresivo que el blanco puro */
+    font-family: "Segoe UI", Arial, sans-serif;
+}
+
+/* --- SCROLL AREAS --- */
+QScrollArea, QScrollArea > QWidget > QWidget {
+    background-color: transparent;
+    border: none;
+}
+QScrollBar:vertical {
+    background: #251B33; /* Un poco más claro que el fondo */
+    width: 10px;
+    border-radius: 5px;
+}
+QScrollBar::handle:vertical {
+    background: #4D3370; /* Morado medio para resaltar sobre el fondo */
+    border-radius: 5px;
+}
+QScrollBar::handle:vertical:hover {
+    background: #9D00FF; /* Morado neón al interactuar */
+}
+
+/* --- BOTONES (Generales) --- */
+QPushButton {
+    background-color: #2D203D; /* Base de botón más clara */
+    border: 1px solid #4D3370;
+    color: #E0D4FF;
+}
+QPushButton:hover {
+    background-color: #3D2C52;
+    border: 1px solid #B066FF; /* Morado neón suave */
+}
+QPushButton:pressed, QPushButton:checked {
+    background-color: #9D00FF;
+    color: #FFFFFF;
+    border: 1px solid #9D00FF;
+}
+
+/* --- INPUTS Y COMBOBOX --- */
+QLineEdit, QComboBox {
+    background-color: #22182E; /* Fondo de inputs diferenciado del fondo principal */
+    border: 1px solid #4D3370;
+    color: #FFFFFF;
+    padding: 6px;
+    border-radius: 6px;
+}
+QLineEdit:focus, QComboBox:focus {
+    border: 1px solid #B066FF;
+    background-color: #2D203D;
+}
+
+/* --- SLIDERS --- */
+QSlider::groove:horizontal {
+    height: 6px;
+    background: #2D203D;
+    border-radius: 3px;
+}
+QSlider::handle:horizontal {
+    background: #B066FF;
+    width: 14px;
+    margin: -4px 0;
+    border-radius: 7px;
+}
+
+/* --- PANELES ESPECÍFICOS Y BORDES --- */
+#addWebPagePanel, #selectorTemaPanel, #sidebarWidget, #panelDerechoPlayer, #panelControlesCrear, #grupoTiemposPomodoro, #grupoAlarmaPomodoro, #grupoPerfilesPomodoro {
+    background-color: #22182E; /* Los paneles ahora resaltan más sobre el fondo */
+    border: 1px solid #4D3370;
+    border-radius: 10px;
+}
+
+/* Reloj del Pomodoro */
+#panelIzquierdoPomodoro {
+    background-color: #1A1226;
+    border: 2px solid #4D3370;
+}
+
+/* Carátula de música */
+#lblCaratulaPlayer {
+    background-color: #22182E;
+    border: 2px dashed #7D2AE8;
+    color: #D6C2F7;
+}
+
+/* --- PROPIEDADES DINÁMICAS (Alto Contraste mejorado) --- */
+
+/* Acciones Destructivas / Rojo-Rosa */
+QPushButton[estado="editando"], #btnDelete, #btnCancelar, #btnEliminarPlaylist, #btnPlaylistRem, #btnSelectorMenos {
+    background-color: #E84D75; /* Rosa vibrante pero más legible */
+    color: #FFFFFF;
+    border: none;
+}
+QPushButton[estado="editando"]:hover, #btnDelete:hover, #btnCancelar:hover, #btnEliminarPlaylist:hover {
+    background-color: #FF6699;
+}
+
+/* Acciones Positivas / Verde */
+#btnAceptar, #btnGuardarPlaylist, #btnGuardarPerfil, #btnAplicarTema, #btnSelectorMas {
+    background-color: #00DB88; /* Verde esmeralda neón */
+    color: #0F0818;
+    border: none;
+}
+#btnAceptar:hover, #btnGuardarPlaylist:hover, #btnGuardarPerfil:hover, #btnAplicarTema:hover {
+    background-color: #33FFAC;
+}
+
+/* Pomodoro: Estados del botón iniciar */
+#btnIniciarPomodoro[estado="corriendo"] {
+    background-color: #00DB88;
+    color: #0F0818;
+}
+#btnIniciarPomodoro[estado="pausado"] {
+    background-color: #FFE600; /* Amarillo eléctrico más brillante */
+    color: #0F0818;
+}
+#btnIniciarPomodoro[estado="finalizado"] {
+    background-color: #00F0FF; /* Cyan más claro */
+    color: #0F0818;
+}
+
+/* Etiquetas y Textos secundarios */
+#lblGenerosEstado, #lblRutaAlarma {
+    color: #C3B1E1; /* Lavanda suave */
+}

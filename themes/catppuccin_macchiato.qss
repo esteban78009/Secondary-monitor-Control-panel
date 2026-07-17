@@ -1,0 +1,138 @@
+/* =======================================================
+   TEMA: CATPPUCCIN MACCHIATO
+   ======================================================= */
+
+/* --- GENERAL --- */
+QWidget {
+    background-color: #24273a; /* Base */
+    color: #cad3f5; /* Text */
+    font-family: "Segoe UI", Arial, sans-serif;
+}
+
+/* --- SCROLL AREAS --- */
+QScrollArea, QScrollArea > QWidget > QWidget {
+    background-color: transparent;
+    border: none;
+}
+QScrollBar:vertical {
+    background: #1e2030;
+    width: 10px;
+    border-radius: 5px;
+}
+QScrollBar::handle:vertical {
+    background: #494d64;
+    border-radius: 5px;
+}
+QScrollBar::handle:vertical:hover {
+    background: #5b6078;
+}
+
+/* --- BOTONES (Generales) --- */
+QPushButton {
+    background-color: #363a4f; /* Surface 0 */
+    border: 1px solid #494d64; /* Surface 1 */
+    color: #cad3f5;
+}
+QPushButton:hover {
+    background-color: #494d64;
+    border: 1px solid #c6a0f6; /* Mauve */
+}
+QPushButton:pressed, QPushButton:checked {
+    background-color: #c6a0f6;
+    color: #181926; /* Crust */
+}
+
+/* --- INPUTS Y COMBOBOX --- */
+QLineEdit, QComboBox {
+    background-color: #1e2030; /* Mantle */
+    border: 1px solid #494d64;
+    color: #cad3f5;
+    padding: 6px;
+    border-radius: 6px;
+}
+QLineEdit:focus, QComboBox:focus {
+    border: 1px solid #c6a0f6;
+}
+QComboBox::drop-down {
+    border: none;
+}
+
+/* --- SLIDERS --- */
+QSlider::groove:horizontal {
+    height: 6px;
+    background: #363a4f;
+    border-radius: 3px;
+}
+QSlider::handle:horizontal {
+    background: #c6a0f6;
+    width: 14px;
+    margin: -4px 0;
+    border-radius: 7px;
+}
+
+/* --- PANELES ESPECÍFICOS Y BORDES --- */
+#addWebPagePanel, #selectorTemaPanel, #sidebarWidget, #panelDerechoPlayer, #panelControlesCrear, #grupoTiemposPomodoro, #grupoAlarmaPomodoro, #grupoPerfilesPomodoro {
+    background-color: #1e2030;
+    border: 1px solid #363a4f;
+    border-radius: 10px;
+}
+
+/* Reloj del Pomodoro */
+#panelIzquierdoPomodoro {
+    background-color: #181926; /* Crust */
+    border: 2px solid #363a4f;
+}
+
+/* Carátula de música */
+#lblCaratulaPlayer {
+    background-color: #1e2030;
+    border: 2px dashed #5b6078;
+    color: #b8c0e0;
+}
+
+/* Separador del Monitor */
+#monitorSeparador {
+    color: #494d64;
+    background-color: #494d64;
+}
+
+/* --- PROPIEDADES DINÁMICAS Y ESTADOS (Colores semánticos) --- */
+
+/* Acciones Destructivas / Eliminar / Rojo */
+QPushButton[estado="editando"], #btnDelete, #btnCancelar, #btnEliminarPlaylist, #btnPlaylistRem, #btnSelectorMenos {
+    background-color: #ed8796; /* Red */
+    color: #181926;
+    border: none;
+}
+QPushButton[estado="editando"]:hover, #btnDelete:hover, #btnCancelar:hover, #btnEliminarPlaylist:hover {
+    background-color: #ee99a0; /* Maroon */
+}
+
+/* Acciones Positivas / Guardar / Verde */
+#btnAceptar, #btnGuardarPlaylist, #btnGuardarPerfil, #btnAplicarTema, #btnSelectorMas {
+    background-color: #a6da95; /* Green */
+    color: #181926;
+    border: none;
+}
+#btnAceptar:hover, #btnGuardarPlaylist:hover, #btnGuardarPerfil:hover, #btnAplicarTema:hover {
+    background-color: #8bd5ca;
+}
+
+/* Pomodoro: Estados del botón iniciar */
+#btnIniciarPomodoro[estado="corriendo"] {
+    background-color: #a6da95; /* Green */
+    color: #181926;
+}
+#btnIniciarPomodoro[estado="pausado"] {
+    background-color: #eed49f; /* Yellow */
+    color: #181926;
+}
+#btnIniciarPomodoro[estado="finalizado"] {
+    background-color: #8aadf4; /* Blue */
+    color: #181926;
+}
+
+/* Etiquetas y Textos secundarios */
+#lblGenerosEstado, #lblRutaAlarma {
+    color: #b8c0e0; /* Subtext 0 */
+}

@@ -1,0 +1,9 @@
+Pillow==12.3.0
+psutil==7.2.2
+pyside6==6.11.1
+pyside6_addons==6.11.1
+pyside6_essentials==6.11.1
+qtawesome==1.4.2
+Requests==2.34.2
+tinytag==2.2.1
+WMI==1.5.1
