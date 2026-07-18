@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, 
     QPushButton, QScrollArea, QLabel, QHBoxLayout,
     QStackedWidget, QLineEdit, QComboBox, QGridLayout, 
-    QFileDialog, QFrame, QSlider, QStyle
+    QFileDialog, QFrame, QSlider, QStyle, QMenu
 )
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 
@@ -33,6 +33,7 @@ class MusicManager(QWidget):
         self.shuffle_activado = False
 
         self.playlist = []
+        self.lista_widgets_canciones = [] 
         self.current_index = -1
         self.current_playlist_list = []
         self.editing_playlist_songs = []
@@ -126,7 +127,6 @@ class MusicManager(QWidget):
         self.btn_cambiar_carpeta.clicked.connect(self.seleccionar_nueva_carpeta)
         layout_izquierdo.addWidget(self.btn_cambiar_carpeta)
 
-
         self.scroll_area, self.contenedor_lista, self.layout_lista = self._crear_area_scroll()
         layout_izquierdo.addWidget(self.scroll_area)
 
@@ -199,7 +199,7 @@ class MusicManager(QWidget):
         col_izq_gen.addWidget(lbl_titulo_gen)
         
         self.scroll_generos_list, self.widget_generos_list, self.layout_generos_list = self._crear_area_scroll()
-        self.layout_generos_list.setSpacing(2) # Espaciado reducido para ser más compacto
+        self.layout_generos_list.setSpacing(2) 
         col_izq_gen.addWidget(self.scroll_generos_list) 
         
         col_der_gen = QVBoxLayout()
@@ -242,7 +242,6 @@ class MusicManager(QWidget):
         fila_superior = QHBoxLayout()
         fila_inferior = QHBoxLayout()
         
-        # Eliminados los estilos con colores
         estilo_inputs = """
             QComboBox, QLineEdit {
                 border: 1px solid; border-radius: 6px;
@@ -325,10 +324,27 @@ class MusicManager(QWidget):
         else:
             self.label_seleccion.setText("Por favor, elige una carpeta de música usando el botón superior.")
 
+        # --- PANEL DERECHO ---
         self.panel_derecho = QWidget()
         self.panel_derecho.setObjectName("panelDerechoPlayer")
         layout_derecho = QVBoxLayout(self.panel_derecho)
         
+        # Filtro de Búsqueda arriba de la carátula
+        self.txt_buscar_musica = QLineEdit()
+        self.txt_buscar_musica.setObjectName("txtBuscarMusica")
+        self.txt_buscar_musica.setPlaceholderText("Buscar canción o artista...")
+        self.txt_buscar_musica.setStyleSheet("""
+            QLineEdit {
+                padding: 12px;
+                font-size: 14px;
+                border: 1px solid;
+                border-radius: 8px;
+            }
+        """)
+        self.txt_buscar_musica.textChanged.connect(self.filtrar_musica)
+        layout_derecho.addWidget(self.txt_buscar_musica)
+        layout_derecho.addSpacing(15)
+
         self.lbl_caratula = QLabel("sin reproduccion actual")
         self.lbl_caratula.setObjectName("lblCaratulaPlayer")
         self.lbl_caratula.setAlignment(Qt.AlignCenter)
@@ -344,10 +360,18 @@ class MusicManager(QWidget):
         self.lbl_info_derecha.setAlignment(Qt.AlignCenter)
         self.lbl_info_derecha.setWordWrap(True)
         
+        self.lbl_tiempo_actual = QLabel("00:00")
+        self.lbl_tiempo_total = QLabel("00:00")
+        
         self.slider_tiempo = QSlider(Qt.Horizontal)
         self.slider_tiempo.setObjectName("sliderTiempo")
         self.slider_tiempo.setEnabled(False)
         self.slider_tiempo.sliderMoved.connect(self.cambiar_posicion_audio)
+
+        layout_slider_tiempo = QHBoxLayout()
+        layout_slider_tiempo.addWidget(self.lbl_tiempo_actual)
+        layout_slider_tiempo.addWidget(self.slider_tiempo)
+        layout_slider_tiempo.addWidget(self.lbl_tiempo_total)
 
         layout_controles = QHBoxLayout()
         icono_prev = self.style().standardIcon(QStyle.SP_MediaSkipBackward)
@@ -365,13 +389,28 @@ class MusicManager(QWidget):
         self.btn_shuffle.setObjectName("btnShuffleTrack")
         self.btn_shuffle.setIcon(qta.icon('fa5s.random'))
         self.btn_shuffle.setCheckable(True) 
-        self.btn_shuffle.setFixedWidth(40) 
         self.btn_shuffle.setProperty("estado", "inactivo") 
         self.btn_shuffle.clicked.connect(self.toggle_shuffle) 
+
+        # Botón "+" movido aquí
+        self.btn_add_playlist = QPushButton("")
+        self.btn_add_playlist.setObjectName("btnAddPlaylistTrack")
+        self.btn_add_playlist.setIcon(qta.icon('fa5s.plus'))
+        self.btn_add_playlist.setToolTip("Añadir canción actual a una Playlist")
+        self.btn_add_playlist.clicked.connect(self.mostrar_menu_playlists_player)
+
+        tam_icono = QSize(28, 28)
+        tam_boton = QSize(55, 55)
+        
+        for btn in [self.btn_prev, self.btn_play, self.btn_next, self.btn_shuffle, self.btn_add_playlist]:
+            btn.setIconSize(tam_icono)
+            btn.setFixedSize(tam_boton)
+            btn.setCursor(Qt.PointingHandCursor)
 
         self.btn_prev.setEnabled(False)
         self.btn_play.setEnabled(False)
         self.btn_next.setEnabled(False)
+        self.btn_add_playlist.setEnabled(False) # Se activa al reproducir
 
         self.btn_play.clicked.connect(self.toggle_reproduccion)
         self.btn_prev.clicked.connect(self.cancion_anterior)
@@ -383,6 +422,7 @@ class MusicManager(QWidget):
         layout_botones.addWidget(self.btn_play)
         layout_botones.addWidget(self.btn_next)
         layout_botones.addWidget(self.btn_shuffle) 
+        layout_botones.addWidget(self.btn_add_playlist) 
         layout_botones.addStretch() 
 
         layout_volumen = QHBoxLayout()
@@ -391,11 +431,11 @@ class MusicManager(QWidget):
         layout_volumen.addWidget(self.slider_volumen)
         layout_volumen.addStretch()
 
-        layout_derecho.addSpacing(20) 
         layout_derecho.addWidget(self.lbl_caratula, alignment=Qt.AlignCenter)
         layout_derecho.addWidget(self.lbl_info_derecha, alignment=Qt.AlignCenter)
         layout_derecho.addSpacing(30) 
-        layout_derecho.addWidget(self.slider_tiempo)
+        
+        layout_derecho.addLayout(layout_slider_tiempo)
         layout_derecho.addLayout(layout_botones)
         layout_derecho.addLayout(layout_volumen)
         layout_derecho.addStretch(1) 
@@ -596,22 +636,69 @@ class MusicManager(QWidget):
         self.editing_playlist_songs = []
         self.actualizar_vista_crear()
 
+    def filtrar_musica(self, texto):
+        texto = texto.lower()
+        for widget_boton, cancion in self.lista_widgets_canciones:
+            if texto in cancion.titulo.lower() or texto in cancion.artista.lower():
+                widget_boton.show()
+            else:
+                widget_boton.hide()
+
     def agregar_cancion(self, cancion: data_music):
         self.playlist.append(cancion)
         index_actual = len(self.playlist) - 1
         minutos, segundos = cancion.duracion
         
-        texto_boton = f"{cancion.artista} , {cancion.titulo} ({minutos} : {segundos})"
-        boton = QPushButton(texto_boton)
-        boton.setObjectName("btnCancionListaPrincipal")
-        boton.setStyleSheet("QPushButton { text-align: left; padding: 10px; font-size: 13px; }")
+        texto_boton = f"{cancion.artista} - {cancion.titulo} ({minutos:02}:{segundos:02})"
+        boton_reproducir = QPushButton(texto_boton)
+        boton_reproducir.setObjectName("btnCancionListaPrincipal")
+        boton_reproducir.setStyleSheet("QPushButton { text-align: left; padding: 10px; font-size: 13px; }")
         
         if cancion.imagen and not cancion.imagen.isNull():
             pixmap = QPixmap.fromImage(cancion.imagen).scaled(32, 32)
-            boton.setIcon(pixmap)
+            boton_reproducir.setIcon(pixmap)
 
-        boton.clicked.connect(lambda checked=False, idx=index_actual: self.reproducir_cancion(idx, self.playlist))
-        self.layout_lista.addWidget(boton)
+        boton_reproducir.clicked.connect(lambda checked=False, idx=index_actual: self.reproducir_cancion(idx, self.playlist))
+        
+        self.layout_lista.addWidget(boton_reproducir)
+        self.lista_widgets_canciones.append((boton_reproducir, cancion))
+
+    # Nueva función atada al botón del panel derecho con Menú visualmente más grande
+    def mostrar_menu_playlists_player(self):
+        if self.current_index < 0 or not self.current_playback_list:
+            return
+            
+        cancion_actual = self.current_playback_list[self.current_index]
+
+        menu = QMenu(self)
+        menu.setStyleSheet("""
+            QMenu {
+                font-size: 14px;
+                padding: 5px;
+                border: 1px solid #555;
+                border-radius: 4px;
+            }
+            QMenu::item {
+                padding: 10px 30px 10px 20px;
+            }
+        """)
+        nombres_playlists = obtener_nombres_playlists() 
+        
+        if not nombres_playlists:
+            accion = menu.addAction("No hay playlists creadas")
+            accion.setEnabled(False)
+        else:
+            for nombre in nombres_playlists:
+                accion = menu.addAction(f"Añadir a '{nombre}'")
+                accion.triggered.connect(lambda checked=False, n=nombre, c=cancion_actual: self.agregar_cancion_a_playlist_directo(c, n))
+        
+        menu.exec(self.btn_add_playlist.mapToGlobal(self.btn_add_playlist.rect().bottomRight()))
+        
+    def agregar_cancion_a_playlist_directo(self, cancion, nombre_pl):
+        rutas = cargar_playlist(nombre_pl) 
+        if cancion.musica not in rutas:
+            rutas.append(cancion.musica)
+            guardar_playlist(nombre_pl, rutas) 
 
     def reproducir_cancion(self, index: int, lista_actual=None): 
         if lista_actual is not None:
@@ -648,6 +735,7 @@ class MusicManager(QWidget):
         self.btn_prev.setEnabled(True)
         self.btn_play.setEnabled(True)
         self.btn_next.setEnabled(True)
+        self.btn_add_playlist.setEnabled(True) # Ahora se puede hacer clic porque hay una canción cargada
 
         self.player.setSource(QUrl.fromLocalFile(cancion.musica))
         self.player.play()
@@ -684,9 +772,19 @@ class MusicManager(QWidget):
         self.slider_tiempo.blockSignals(True)
         self.slider_tiempo.setValue(posicion)
         self.slider_tiempo.blockSignals(False)
+        
+        segundos_totales = posicion // 1000
+        minutos = segundos_totales // 60
+        segundos = segundos_totales % 60
+        self.lbl_tiempo_actual.setText(f"{minutos:02}:{segundos:02}")
 
     def actualizar_rango_slider(self, posicion):
         self.slider_tiempo.setRange(0, posicion)
+        
+        segundos_totales = posicion // 1000
+        minutos = segundos_totales // 60
+        segundos = segundos_totales % 60
+        self.lbl_tiempo_total.setText(f"{minutos:02}:{segundos:02}")
 
     def cambiar_posicion_audio(self, estado):
         self.player.setPosition(estado)
@@ -888,6 +986,8 @@ class MusicManager(QWidget):
         if nueva_carpeta:
             guardar_configuracion(nueva_carpeta)
             self.playlist.clear()
+            self.lista_widgets_canciones.clear() 
+            self.txt_buscar_musica.clear() 
             self.clear_layout(self.layout_lista)
             self.label_seleccion.setText("No hay canción seleccionada")
             
