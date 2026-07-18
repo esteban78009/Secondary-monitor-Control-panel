@@ -7,15 +7,38 @@ import qtawesome as qta
 
 import random
 from backend.music_manager_backend import * 
-from PySide6.QtCore import QThread, Signal, Qt, QUrl, QSize
+from PySide6.QtCore import QThread, Signal, Qt, QUrl, QSize, QTimer
 from PySide6.QtGui import QImage, QPixmap, QIcon
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, 
     QPushButton, QScrollArea, QLabel, QHBoxLayout,
     QStackedWidget, QLineEdit, QComboBox, QGridLayout, 
-    QFileDialog, QFrame, QSlider, QStyle, QMenu
+    QFileDialog, QFrame, QSlider, QStyle, QMenu, QMessageBox
 )
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
+
+# --- NUEVA CLASE PARA DETECTAR "MANTENER PRESIONADO" ---
+class CancionButton(QPushButton):
+    long_pressed = Signal()
+
+    def __init__(self, text="", parent=None):
+        super().__init__(text, parent)
+        self._timer = QTimer(self)
+        self._timer.setSingleShot(True)
+        self._timer.timeout.connect(self._on_timeout)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self._timer.start(700) # 700 ms para considerar que se "mantuvo presionado"
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        self._timer.stop()
+        super().mouseReleaseEvent(event)
+
+    def _on_timeout(self):
+        self.long_pressed.emit()
+# --------------------------------------------------------
 
 class MusicManager(QWidget):
     def __init__(self):
@@ -392,7 +415,6 @@ class MusicManager(QWidget):
         self.btn_shuffle.setProperty("estado", "inactivo") 
         self.btn_shuffle.clicked.connect(self.toggle_shuffle) 
 
-        # Botón "+" movido aquí
         self.btn_add_playlist = QPushButton("")
         self.btn_add_playlist.setObjectName("btnAddPlaylistTrack")
         self.btn_add_playlist.setIcon(qta.icon('fa5s.plus'))
@@ -410,7 +432,7 @@ class MusicManager(QWidget):
         self.btn_prev.setEnabled(False)
         self.btn_play.setEnabled(False)
         self.btn_next.setEnabled(False)
-        self.btn_add_playlist.setEnabled(False) # Se activa al reproducir
+        self.btn_add_playlist.setEnabled(False)
 
         self.btn_play.clicked.connect(self.toggle_reproduccion)
         self.btn_prev.clicked.connect(self.cancion_anterior)
@@ -567,14 +589,28 @@ class MusicManager(QWidget):
             btn_song.clicked.connect(lambda checked=False, idx=i, l=playlist_actual_songs: self.reproducir_cancion(idx, l))
             self.layout_pl_songs.addWidget(btn_song)
 
+    # --- CAMBIO 1: Botones de artistas más grandes ---
     def actualizar_vista_artistas(self):
         self.clear_layout(self.layout_artistas_list)
         self.clear_layout(self.layout_artistas_songs)
         
         artistas_unicos = sorted(list(set(song.artista for song in self.playlist)))
         for artista in artistas_unicos:
-            btn_art = QPushButton(f"{artista}")
+            btn_art = QPushButton(f" {artista}")
             btn_art.setObjectName("btnArtistaItem")
+            btn_art.setIcon(qta.icon('fa5s.user'))
+            btn_art.setStyleSheet("""
+                QPushButton { 
+                    text-align: left; 
+                    padding: 14px; 
+                    font-size: 15px; 
+                    font-weight: bold; 
+                    border-radius: 8px; 
+                    border: 1px solid #555;
+                    margin-bottom: 4px;
+                }
+            """)
+            btn_art.setCursor(Qt.PointingHandCursor)
             btn_art.clicked.connect(lambda checked=False, a=artista: self.cargar_canciones_artista(a))
             self.layout_artistas_list.addWidget(btn_art)
 
@@ -650,7 +686,9 @@ class MusicManager(QWidget):
         minutos, segundos = cancion.duracion
         
         texto_boton = f"{cancion.artista} - {cancion.titulo} ({minutos:02}:{segundos:02})"
-        boton_reproducir = QPushButton(texto_boton)
+        
+        # --- CAMBIO 2: Usamos nuestra clase CancionButton en lugar de QPushButton normal ---
+        boton_reproducir = CancionButton(texto_boton)
         boton_reproducir.setObjectName("btnCancionListaPrincipal")
         boton_reproducir.setStyleSheet("QPushButton { text-align: left; padding: 10px; font-size: 13px; }")
         
@@ -660,10 +698,52 @@ class MusicManager(QWidget):
 
         boton_reproducir.clicked.connect(lambda checked=False, idx=index_actual: self.reproducir_cancion(idx, self.playlist))
         
+        # Conectamos la señal de "mantener presionado" a la función de eliminar
+        boton_reproducir.long_pressed.connect(lambda c=cancion, b=boton_reproducir: self.confirmar_eliminar_cancion(c, b))
+        
         self.layout_lista.addWidget(boton_reproducir)
         self.lista_widgets_canciones.append((boton_reproducir, cancion))
 
-    # Nueva función atada al botón del panel derecho con Menú visualmente más grande
+    # --- NUEVA FUNCIÓN PARA ELIMINAR DEL DISCO ---
+    def confirmar_eliminar_cancion(self, cancion, widget_boton):
+        # Mostramos una alerta para evitar borrar por accidente
+        respuesta = QMessageBox.warning(
+            self,
+            "Eliminar archivo permanentemente",
+            f"¿Estás seguro de que deseas eliminar permanentemente:\n\n'{cancion.titulo}'\n\nde tu sistema?\nEsta acción no se puede deshacer.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+
+        if respuesta == QMessageBox.Yes:
+            try:
+                # Si la canción que queremos borrar es la que está sonando, detenemos el reproductor
+                if self.player.source().toLocalFile() == cancion.musica:
+                    self.player.stop()
+                    self.player.setSource(QUrl()) # Limpiamos la fuente para que el sistema libere el archivo
+                    self.lbl_caratula.setText("sin reproduccion actual")
+                    self.lbl_caratula.setPixmap(QPixmap())
+                    self.lbl_info_derecha.setText("")
+                    self.btn_add_playlist.setEnabled(False)
+
+                # 1. Eliminar físicamente del disco
+                if os.path.exists(cancion.musica):
+                    os.remove(cancion.musica)
+                
+                # 2. Remover de las listas internas del programa
+                if cancion in self.playlist:
+                    self.playlist.remove(cancion)
+                if cancion in self.current_playback_list:
+                    self.current_playback_list.remove(cancion)
+                
+                # 3. Quitar el botón visual
+                widget_boton.hide()
+                widget_boton.deleteLater()
+                self.lista_widgets_canciones = [(w, c) for w, c in self.lista_widgets_canciones if c != cancion]
+
+            except Exception as e:
+                QMessageBox.critical(self, "Error al eliminar", f"No se pudo eliminar el archivo. Puede que esté abierto en otro programa.\nError: {str(e)}")
+
     def mostrar_menu_playlists_player(self):
         if self.current_index < 0 or not self.current_playback_list:
             return
@@ -735,7 +815,7 @@ class MusicManager(QWidget):
         self.btn_prev.setEnabled(True)
         self.btn_play.setEnabled(True)
         self.btn_next.setEnabled(True)
-        self.btn_add_playlist.setEnabled(True) # Ahora se puede hacer clic porque hay una canción cargada
+        self.btn_add_playlist.setEnabled(True) 
 
         self.player.setSource(QUrl.fromLocalFile(cancion.musica))
         self.player.play()
