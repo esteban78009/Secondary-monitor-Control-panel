@@ -7,7 +7,7 @@ Un panel de control personalizable y modular, diseñado con el fin de aprovechar
 - *Gestión de Música:* Reproductor local con soporte para listas de reproducción, navegación por artistas/géneros y control de volumen.
 
 **Gestión de Música:**
-<img src="https://github.com/esteban78009/Secondary-monitor-Control-panel/raw/313675206a712351da82f4013d147b51a2ff925e/screenshots/musica.png" width="500">
+<img src="https://github.com/esteban78009/Secondary-monitor-Control-panel/raw/205a30a8f474f0c2ef7cf6dca2091b82528f9349/screenshots/musica.png" width="500">
 
 - *Monitoreo de Sistema:* Visualización en tiempo real del uso de CPU, RAM, almacenamiento y temperaturas (integración con OpenHardwareMonitor).
 
