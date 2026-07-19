@@ -26,7 +26,6 @@ from frontend.web_browser import AddWebPage, WebPAGE
 from frontend.music_manager import MusicManager
 from frontend.monitorizacion import MonitorSistema
 from frontend.wallpaper import WallpaperConfiguratorWindow, SelectorTema
-# --------------------------
 
 class SeccionConVuelta(QWidget):
 
@@ -39,7 +38,7 @@ class SeccionConVuelta(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        barra = QWidget()
+        barra = QWidget()  
         barra.setObjectName("barraSeccion")
         barra_layout = QHBoxLayout(barra)
         barra_layout.setContentsMargins(8, 8, 8, 8)
@@ -269,39 +268,57 @@ class VentanaPrincipal(QMainWindow):
         self.stack.setObjectName("stackPrincipal")
         self.setCentralWidget(self.stack)
 
-        self.wallpapers_win = WallpaperConfiguratorWindow()
-        self.music_win = MusicManager()
-        self.monitor_win = MonitorSistema()
+        self.wallpapers_win = None
+        self.music_win = None
+        self.monitor_win = None
+
+        self.pagina_wallpapers = None
+        self.pagina_musica = None
+        self.pagina_monitor = None
 
         self.menu = MenuPrincipal(
-            ir_a_musica=lambda: self.mostrar(self.pagina_musica),
-            ir_a_wallpapers=lambda: self.mostrar(self.pagina_wallpapers),
-            ir_a_monitor=lambda: self.mostrar(self.pagina_monitor),
+            ir_a_musica=lambda: self.mostrar(self._pagina_musica()),
+            ir_a_wallpapers=lambda: self.mostrar(self._pagina_wallpapers()),
+            ir_a_monitor=lambda: self.mostrar(self._pagina_monitor()),
         )
-
-        self.pagina_wallpapers = SeccionConVuelta(
-            "Wallpapers",
-            self.wallpapers_win.centralWidget(),
-            volver_callback=lambda: self.mostrar(self.menu),
-        )
-        self.pagina_musica = SeccionConVuelta(
-            "Música",
-            self.music_win,
-            volver_callback=lambda: self.mostrar(self.menu),
-        )
-        self.pagina_monitor = SeccionConVuelta(
-            "Monitor de sistema",
-            self.monitor_win.centralWidget(),
-            volver_callback=lambda: self.mostrar(self.menu),
-        )
-
-        for pagina in (self.menu, self.pagina_wallpapers, self.pagina_musica, self.pagina_monitor):
-            self.stack.addWidget(pagina)
-
+        self.stack.addWidget(self.menu)
 
         self.cargar_addons()
 
         self.mostrar(self.menu)
+
+    def _pagina_wallpapers(self):
+        if self.pagina_wallpapers is None:
+            self.wallpapers_win = WallpaperConfiguratorWindow()
+            self.pagina_wallpapers = SeccionConVuelta(
+                "Wallpapers",
+                self.wallpapers_win.centralWidget(),
+                volver_callback=lambda: self.mostrar(self.menu),
+            )
+            self.stack.addWidget(self.pagina_wallpapers)
+        return self.pagina_wallpapers
+
+    def _pagina_musica(self):
+        if self.pagina_musica is None:
+            self.music_win = MusicManager()
+            self.pagina_musica = SeccionConVuelta(
+                "Música",
+                self.music_win,
+                volver_callback=lambda: self.mostrar(self.menu),
+            )
+            self.stack.addWidget(self.pagina_musica)
+        return self.pagina_musica
+
+    def _pagina_monitor(self):
+        if self.pagina_monitor is None:
+            self.monitor_win = MonitorSistema()
+            self.pagina_monitor = SeccionConVuelta(
+                "Monitor de sistema",
+                self.monitor_win.centralWidget(),
+                volver_callback=lambda: self.mostrar(self.menu),
+            )
+            self.stack.addWidget(self.pagina_monitor)
+        return self.pagina_monitor
 
     def mostrar(self, pagina):
         self.stack.setCurrentWidget(pagina)

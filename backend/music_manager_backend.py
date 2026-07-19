@@ -2,16 +2,17 @@ import os
 import json
 from dataclasses import dataclass
 
-from PySide6.QtCore import QThread, Signal
+from PySide6.QtCore import QThread, Signal, Qt
 from PySide6.QtGui import QImage
 from tinytag import TinyTag
 
-# Definición centralizada de constantes de ruta
 BASE_DIR = os.path.join("files", "music_manager")
 PLAYLIST = os.path.join(BASE_DIR, "PLAYLIST") 
 CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
 
 EXTENSIONES = ('.mp3', '.wav', '.flac', '.ogg', '.m4a')
+
+TAMANO_MAX_CARATULA = 300
 
 @dataclass
 class data_music:
@@ -42,7 +43,16 @@ def load_music(ruta: str):
                     duracion_tupla = (0, 0) if duracion is None else (int(duracion // 60), int(duracion % 60))
                     
                     data_imagen = tag.get_image()
-                    imagen = QImage.fromData(data_imagen) if data_imagen else None
+                    imagen = None
+                    if data_imagen:
+                        imagen_cruda = QImage.fromData(data_imagen)
+                        if not imagen_cruda.isNull():
+                            imagen = imagen_cruda.scaled(
+                                TAMANO_MAX_CARATULA,
+                                TAMANO_MAX_CARATULA,
+                                Qt.KeepAspectRatio,
+                                Qt.SmoothTransformation,
+                            )
                     
                     yield data_music(
                         titulo=titulo,

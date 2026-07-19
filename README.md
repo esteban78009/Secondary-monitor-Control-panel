@@ -32,7 +32,6 @@ Un panel de control personalizable y modular, diseñado con el fin de aprovechar
 - *QTAwesome*
 - *Psutil / wmi*
 - *tinyTag*
-
 Ademas es necesario tener descargado OpenHardwareMonitor y tenerlo en segundo plano para que todo el monitoreo funcione de forma correcta
 
 ## Instalacion

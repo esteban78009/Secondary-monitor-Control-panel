@@ -7,3 +7,4 @@ qtawesome==1.4.2
 Requests==2.34.2
 tinytag==2.2.1
 WMI==1.5.1
+winsdk

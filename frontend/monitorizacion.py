@@ -75,7 +75,22 @@ class MonitorSistema(QMainWindow):
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.actualizar_datos)
-        self.timer.start(1500) 
+        self.timer.start(1500)
+
+    def showEvent(self, event):
+        # Si el usuario vuelve a esta sección, reanudamos el muestreo.
+        if not self.timer.isActive():
+            self.timer.start(1500)
+        super().showEvent(event)
+
+    def hideEvent(self, event):
+        # Al salir de la sección (main.py la oculta dentro del QStackedWidget
+        # en vez de destruirla) detenemos el timer, para no seguir leyendo
+        # psutil/WMI cada 1.5s en segundo plano cuando nadie está mirando el
+        # monitor. Esto es lo que causaba los picos de CPU intermitentes
+        # aunque no estuvieras usando esa pantalla.
+        self.timer.stop()
+        super().hideEvent(event)
 
     def crear_titulo(self, texto, icono_str=None):
         if icono_str:
