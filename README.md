@@ -7,22 +7,25 @@ Un panel de control personalizable y modular, diseñado con el fin de aprovechar
 - *Gestión de Música:* Reproductor local con soporte para listas de reproducción, navegación por artistas/géneros y control de volumen.
 
 **Gestión de Música:**
-<img src="https://github.com/esteban78009/Secondary-monitor-Control-panel/raw/205a30a8f474f0c2ef7cf6dca2091b82528f9349/screenshots/musica.png" width="500">
+<img src="https://github.com/esteban78009/Secondary-monitor-Control-panel/raw/a2ec33f4e6a378e68a3070e5d31321aacdff169e/screenshots/musica.png" width="500">
 
 - *Monitoreo de Sistema:* Visualización en tiempo real del uso de CPU, RAM, almacenamiento y temperaturas (integración con OpenHardwareMonitor).
 
 **Monitoreo de Sistema:**
-<img src="https://github.com/esteban78009/Secondary-monitor-Control-panel/raw/313675206a712351da82f4013d147b51a2ff925e/screenshots/monitorizacion.png" width="500">
+<img src="https://github.com/esteban78009/Secondary-monitor-Control-panel/raw/a2ec33f4e6a378e68a3070e5d31321aacdff169e/screenshots/monitorizacion.png" width="500">
 
 - *Gestor de Wallpapers:* Configuración avanzada de fondos de pantalla con integración completa para múltiples monitores.
 
 **Gestor de Wallpapers:**
-<img src="https://github.com/esteban78009/Secondary-monitor-Control-panel/raw/87e835391b75c7538b9cc89cb7b1c318e4a9e8a5/screenshots/wallpaper_good.png" width="500">
+<img src="https://github.com/esteban78009/Secondary-monitor-Control-panel/raw/a2ec33f4e6a378e68a3070e5d31321aacdff169e/screenshots/wallpaper.png" width="500">
 
 - *Sistema de Addons:* Arquitectura extensible que permite crear y cargar nuevas secciones de forma dinámica sin modificar el núcleo del programa , viene integrado con un addon de pomodoro.
 
 **Sistema de Addons (Pomodoro):**
-<img src="https://github.com/esteban78009/Secondary-monitor-Control-panel/raw/313675206a712351da82f4013d147b51a2ff925e/screenshots/pomodoro.png" width="500">
+<img src="https://github.com/esteban78009/Secondary-monitor-Control-panel/raw/a2ec33f4e6a378e68a3070e5d31321aacdff169e/screenshots/pomodoro.png" width="500">
+
+**Sistema de Addons (Media):**
+<img src="https://github.com/esteban78009/Secondary-monitor-Control-panel/raw/a2ec33f4e6a378e68a3070e5d31321aacdff169e/screenshots/media.png" width="500">
 
 - *Interfaz Táctil Amigable:* Diseñado con PySide6 para ser responsivo y fácil de usar en pantallas pequeñas o táctiles.
 
