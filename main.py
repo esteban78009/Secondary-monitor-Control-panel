@@ -20,6 +20,54 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+
+class ContenedorBotonesFluido(QWidget):
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("contenedorBotones")
+        self.grid = QGridLayout(self)
+        self.grid.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        self.grid.setSpacing(15)
+        self._botones = []
+        self._columnas_actuales = -1
+
+    def set_botones(self, widgets):
+        while self.grid.count():
+            self.grid.takeAt(0)
+        self._botones = widgets
+        self._columnas_actuales = -1  
+        self._reacomodar()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._reacomodar()
+
+    def _reacomodar(self):
+        if not self._botones:
+            return
+
+        primero = self._botones[0]
+        ancho_boton = primero.sizeHint().width() or primero.width()
+        if ancho_boton <= 0:
+            ancho_boton = primero.minimumSizeHint().width() or 100
+        espaciado = self.grid.spacing()
+        margenes = self.grid.contentsMargins()
+        ancho_disponible = self.width() - margenes.left() - margenes.right()
+
+        columnas = max(1, (ancho_disponible + espaciado) // (ancho_boton + espaciado))
+
+        if columnas == self._columnas_actuales:
+            return
+        self._columnas_actuales = columnas
+
+        while self.grid.count():
+            self.grid.takeAt(0)
+
+        for i, boton in enumerate(self._botones):
+            fila, columna = divmod(i, columnas)
+            self.grid.addWidget(boton, fila, columna)
+
 from backend.web_browser_backend import load_pages
 from backend.wallpaper_backend import aplicar_tema_guardado_o_por_defecto
 from frontend.web_browser import AddWebPage, WebPAGE
@@ -62,8 +110,6 @@ class SeccionConVuelta(QWidget):
 
 
 class MenuPrincipal(QWidget):
-
-    COLUMNAS = 4
 
     def __init__(self, ir_a_musica, ir_a_wallpapers, ir_a_monitor, parent=None):
         super().__init__(parent)
@@ -163,10 +209,7 @@ class MenuPrincipal(QWidget):
         self.scroll.setWidgetResizable(True)
         self.scroll.setStyleSheet("QScrollArea { border: none; }") 
 
-        self.contenedor_botones = QWidget()
-        self.contenedor_botones.setObjectName("contenedorBotones")
-        self.grid_botones = QGridLayout(self.contenedor_botones)
-        self.grid_botones.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        self.contenedor_botones = ContenedorBotonesFluido()
 
         self.scroll.setWidget(self.contenedor_botones)
         
@@ -180,7 +223,7 @@ class MenuPrincipal(QWidget):
         
         layout_central.addWidget(self.scroll, 1)
         layout_central.addWidget(self.panel_creador) 
-        layout_central.addWidget(self.panel_tema) # Añadimos el nuevo panel al layout
+        layout_central.addWidget(self.panel_tema) 
 
         layout_raiz.addWidget(self.contenedor_principal, 1)
 
@@ -220,16 +263,13 @@ class MenuPrincipal(QWidget):
             self.btn_toggle_borrar.setChecked(False)
             self.toggle_edicion_paginas(False)
 
-        while self.grid_botones.count():
-            item = self.grid_botones.takeAt(0)
-            widget = item.widget()
+        for i in range(self.contenedor_botones.grid.count()):
+            widget = self.contenedor_botones.grid.itemAt(i).widget()
             if widget is not None:
                 widget.deleteLater()
 
-        for i, pagina in enumerate(load_pages()):
-            boton = WebPAGE(pagina)
-            fila, columna = divmod(i, self.COLUMNAS)
-            self.grid_botones.addWidget(boton, fila, columna)
+        botones = [WebPAGE(pagina) for pagina in load_pages()]
+        self.contenedor_botones.set_botones(botones)
 
     def toggle_edicion_paginas(self, activado):
         if activado:
@@ -244,8 +284,8 @@ class MenuPrincipal(QWidget):
         self.btn_toggle_borrar.style().unpolish(self.btn_toggle_borrar)
         self.btn_toggle_borrar.style().polish(self.btn_toggle_borrar)
 
-        for i in range(self.grid_botones.count()):
-            widget = self.grid_botones.itemAt(i).widget()
+        for i in range(self.contenedor_botones.grid.count()):
+            widget = self.contenedor_botones.grid.itemAt(i).widget()
             if isinstance(widget, WebPAGE):
                 widget.set_modo_eliminar(activado)
 
