@@ -5,7 +5,9 @@ import time
 import urllib.request
 import re
 
-# Forzar a qtawesome/qtpy a usar PySide6
+if os.name == 'nt':
+    import pythoncom
+
 os.environ["QT_API"] = "pyside6"
 import qtawesome as qta
 
@@ -14,11 +16,194 @@ import wmi
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, 
                                QVBoxLayout, QHBoxLayout, QGridLayout, 
                                QLabel, QFrame, QScrollArea, QProgressBar, QPushButton)
-from PySide6.QtCore import QTimer, Qt
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QFont
 
 GB = 1024**3
 MB = 1024**2
+
+
+class WorkerMonitoreo(QThread):
+    datos_actualizados = Signal(dict)
+
+    def __init__(self):
+        super().__init__()
+        self.corriendo = True
+        self.detalles_visibles = False
+
+    def run(self):
+        if os.name == 'nt':
+            pythoncom.CoInitialize()
+
+        wmi_lhm = None
+        wmi_ohm = None
+        wmi_cimv2 = None
+
+        if os.name == 'nt':
+            try: wmi_cimv2 = wmi.WMI()
+            except Exception: pass
+
+        while self.corriendo:
+            datos_salida = {}
+            
+            datos_salida['cpu_uso_total'] = psutil.cpu_percent()
+            datos_salida['ram'] = psutil.virtual_memory()
+
+            stats = {
+                "cpu_temp": None, "gpu_temp": None, "gpu_uso": None, "vram_uso": None, 
+                "vram_used_mb": None, "vram_free_mb": None, "vram_total_mb": None,
+                "core_temps": {}
+            }
+            datos_leidos = False
+
+            if not wmi_lhm:
+                try: wmi_lhm = wmi.WMI(namespace=r"root\LibreHardwareMonitor")
+                except Exception: pass
+            if wmi_lhm: datos_leidos = self.extraer_wmi(wmi_lhm, stats)
+
+            if not datos_leidos:
+                try:
+                    req = urllib.request.urlopen("http://localhost:8085/data.json", timeout=0.3)
+                    data = json.loads(req.read().decode())
+                    self.extraer_datos_http(data, stats)
+                    if any(v is not None for v in stats.values()) or stats["core_temps"]: 
+                        datos_leidos = True
+                except Exception: pass
+
+            if not datos_leidos:
+                if not wmi_ohm:
+                    try: wmi_ohm = wmi.WMI(namespace=r"root\OpenHardwareMonitor")
+                    except Exception: pass
+                if wmi_ohm: datos_leidos = self.extraer_wmi(wmi_ohm, stats)
+
+            datos_salida['stats'] = stats
+            datos_salida['datos_leidos'] = datos_leidos
+
+            if self.detalles_visibles:
+                datos_salida['usos_cores'] = psutil.cpu_percent(percpu=True)
+                
+                global_freq = psutil.cpu_freq()
+                datos_salida['global_ghz'] = (global_freq.current / 1000.0) if global_freq else 0.0
+                
+                try: datos_salida['freqs'] = psutil.cpu_freq(percpu=True)
+                except Exception: datos_salida['freqs'] = []
+
+                disk_io_data = {}
+                if wmi_cimv2:
+                    try:
+                        for d in wmi_cimv2.Win32_PerfFormattedData_PerfDisk_LogicalDisk():
+                            disk_io_data[d.Name] = {
+                                'read': float(d.DiskReadBytesPersec) / MB,
+                                'write': float(d.DiskWriteBytesPersec) / MB,
+                                'act': min(100.0, float(d.PercentDiskTime))
+                            }
+                    except Exception: pass
+                datos_salida['disk_io'] = disk_io_data
+            else:
+                datos_salida['disk_io'] = {}
+
+            particiones = []
+            for part in psutil.disk_partitions():
+                if 'cdrom' in part.opts or not part.fstype: continue
+                try:
+                    usage = psutil.disk_usage(part.mountpoint)
+                    particiones.append({
+                        'device': part.device,
+                        'mountpoint': part.mountpoint,
+                        'used': usage.used,
+                        'free': usage.free,
+                        'total': usage.total,
+                        'percent': usage.percent
+                    })
+                except PermissionError: pass
+            
+            datos_salida['particiones'] = particiones
+
+            self.datos_actualizados.emit(datos_salida)
+            
+            time.sleep(1.5)
+
+        if os.name == 'nt':
+            pythoncom.CoUninitialize()
+
+    def procesar_nombre_core(self, nombre, val, stats):
+        try:
+            match = re.search(r'core.*?#?(\d+)', nombre)
+            if match:
+                idx = int(match.group(1)) - 1
+                stats["core_temps"][idx] = val
+        except: pass
+
+    def extraer_wmi(self, obj_wmi, stats):
+        try:
+            sensores = obj_wmi.Sensor()
+            if len(sensores) == 0: return False
+            for sensor in sensores:
+                nombre = sensor.Name.lower()
+                tipo = sensor.SensorType
+                val = float(sensor.Value)
+                
+                if tipo == 'Temperature':
+                    if stats["cpu_temp"] is None and any(x in nombre for x in ['cpu package', 'core (tctl']):
+                        stats["cpu_temp"] = val
+                    elif 'cpu core' in nombre:
+                        self.procesar_nombre_core(nombre, val, stats)
+                    elif stats["gpu_temp"] is None and 'gpu core' in nombre:
+                        stats["gpu_temp"] = val
+                elif tipo == 'Load':
+                    if stats["gpu_uso"] is None and 'gpu core' in nombre:
+                        stats["gpu_uso"] = val
+                    elif stats["vram_uso"] is None and any(x in nombre for x in ['gpu memory', 'frame buffer']):
+                        stats["vram_uso"] = val
+                elif tipo in ['SmallData', 'Data']:
+                    if 'shared' in nombre or 'compartida' in nombre:
+                        continue
+                    if 'memory' in nombre and ('gpu' in nombre or 'dedicated' in nombre):
+                        if 'used' in nombre: stats['vram_used_mb'] = val
+                        elif 'free' in nombre: stats['vram_free_mb'] = val
+                        elif 'total' in nombre: stats['vram_total_mb'] = val
+                        
+            return any(v is not None for v in stats.values())
+        except Exception: return False
+
+    def extraer_datos_http(self, nodo, stats):
+        nombre = nodo.get("Text", "").lower()
+        valor_str = nodo.get("Value", "")
+
+        if "°c" in valor_str.lower():
+            try:
+                val = float(valor_str.replace(",", ".").split(" ")[0])
+                if stats["cpu_temp"] is None and any(x in nombre for x in ['cpu package', 'core (tctl']):
+                    stats["cpu_temp"] = val
+                elif 'cpu core' in nombre:
+                    self.procesar_nombre_core(nombre, val, stats)
+                elif stats["gpu_temp"] is None and 'gpu core' in nombre:
+                    stats["gpu_temp"] = val
+            except ValueError: pass
+                
+        elif "%" in valor_str:
+            try:
+                val = float(valor_str.replace(",", ".").split(" ")[0])
+                if stats["gpu_uso"] is None and 'gpu core' in nombre:
+                    stats["gpu_uso"] = val
+                elif stats["vram_uso"] is None and any(x in nombre for x in ['gpu memory', 'frame buffer']):
+                    stats["vram_uso"] = val
+            except ValueError: pass
+            
+        elif "mb" in valor_str.lower() and "memory" in nombre:
+            if 'shared' in nombre or 'compartida' in nombre:
+                pass
+            else:
+                try:
+                    val = float(valor_str.replace(",", ".").split(" ")[0])
+                    if 'used' in nombre: stats['vram_used_mb'] = val
+                    elif 'free' in nombre: stats['vram_free_mb'] = val
+                    elif 'total' in nombre: stats['vram_total_mb'] = val
+                except ValueError: pass
+
+        for hijo in nodo.get("Children", []):
+            self.extraer_datos_http(hijo, stats)
+
 
 class MonitorSistema(QMainWindow):
     def __init__(self):
@@ -102,33 +287,18 @@ class MonitorSistema(QMainWindow):
         self.disk_widgets = {}
         self.layout.addStretch()
 
-        # Variables WMI / I-O
-        self.last_disk_io = psutil.disk_io_counters(perdisk=True)
-        self.last_time = time.time()
+        self.worker = WorkerMonitoreo()
+        self.worker.datos_actualizados.connect(self.actualizar_ui)
+        self.worker.start()
 
-        self.wmi_lhm = None
-        self.wmi_ohm = None
-        
-        self.wmi_cimv2 = None
-        if os.name == 'nt':
-            try: self.wmi_cimv2 = wmi.WMI()
-            except Exception: pass
-
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.actualizar_datos)
-        self.timer.start(1500)
-
-    def showEvent(self, event):
-        if not self.timer.isActive():
-            self.timer.start(1500)
-        super().showEvent(event)
-
-    def hideEvent(self, event):
-        self.timer.stop()
-        super().hideEvent(event)
+    def closeEvent(self, event):
+        self.worker.corriendo = False
+        self.worker.wait()
+        super().closeEvent(event)
 
     def toggle_detalles(self):
         self.detalles_visibles = not self.detalles_visibles
+        self.worker.detalles_visibles = self.detalles_visibles 
         
         if self.detalles_visibles:
             self.widget_cpu_grid.show()
@@ -136,10 +306,7 @@ class MonitorSistema(QMainWindow):
         else:
             self.widget_cpu_grid.hide()
             self.btn_detalles.setStyleSheet("font-size: 11px; background-color: transparent;")
-            
-        self.actualizar_datos() 
 
-    # --- UI HELPERS ---
     def crear_titulo(self, texto, icono_str=None):
         if icono_str:
             container = QWidget()
@@ -195,119 +362,16 @@ class MonitorSistema(QMainWindow):
         linea.setFrameShadow(QFrame.Sunken)
         return linea
 
-    # --- LECTURA DE SENSORES ---
-    def procesar_nombre_core(self, nombre, val, stats):
-        try:
-            match = re.search(r'core.*?#?(\d+)', nombre)
-            if match:
-                idx = int(match.group(1)) - 1
-                stats["core_temps"][idx] = val
-        except: pass
+    def actualizar_ui(self, datos):
+        self.lbl_cpu_uso.setText(f"CPU Uso Total: {datos['cpu_uso_total']}%")
 
-    def extraer_wmi(self, obj_wmi, stats):
-        try:
-            sensores = obj_wmi.Sensor()
-            if len(sensores) == 0: return False
-            for sensor in sensores:
-                nombre = sensor.Name.lower()
-                tipo = sensor.SensorType
-                val = float(sensor.Value)
-                
-                if tipo == 'Temperature':
-                    if stats["cpu_temp"] is None and any(x in nombre for x in ['cpu package', 'core (tctl']):
-                        stats["cpu_temp"] = val
-                    elif 'cpu core' in nombre:
-                        self.procesar_nombre_core(nombre, val, stats)
-                    elif stats["gpu_temp"] is None and 'gpu core' in nombre:
-                        stats["gpu_temp"] = val
-                elif tipo == 'Load':
-                    if stats["gpu_uso"] is None and 'gpu core' in nombre:
-                        stats["gpu_uso"] = val
-                    elif stats["vram_uso"] is None and any(x in nombre for x in ['gpu memory', 'frame buffer']):
-                        stats["vram_uso"] = val
-                elif tipo in ['SmallData', 'Data']:
-                    if 'gpu memory used' in nombre: stats['vram_used_mb'] = val
-                    elif 'gpu memory free' in nombre: stats['vram_free_mb'] = val
-                    elif 'gpu memory total' in nombre: stats['vram_total_mb'] = val
-                        
-            return any(v is not None for v in stats.values())
-        except Exception: return False
-
-    def extraer_datos_http(self, nodo, stats):
-        nombre = nodo.get("Text", "").lower()
-        valor_str = nodo.get("Value", "")
-
-        if "°c" in valor_str.lower():
-            try:
-                val = float(valor_str.replace(",", ".").split(" ")[0])
-                if stats["cpu_temp"] is None and any(x in nombre for x in ['cpu package', 'core (tctl']):
-                    stats["cpu_temp"] = val
-                elif 'cpu core' in nombre:
-                    self.procesar_nombre_core(nombre, val, stats)
-                elif stats["gpu_temp"] is None and 'gpu core' in nombre:
-                    stats["gpu_temp"] = val
-            except ValueError: pass
-                
-        elif "%" in valor_str:
-            try:
-                val = float(valor_str.replace(",", ".").split(" ")[0])
-                if stats["gpu_uso"] is None and 'gpu core' in nombre:
-                    stats["gpu_uso"] = val
-                elif stats["vram_uso"] is None and any(x in nombre for x in ['gpu memory', 'frame buffer']):
-                    stats["vram_uso"] = val
-            except ValueError: pass
-            
-        elif "mb" in valor_str.lower() and "memory" in nombre:
-            try:
-                val = float(valor_str.replace(",", ".").split(" ")[0])
-                if 'used' in nombre: stats['vram_used_mb'] = val
-                elif 'free' in nombre: stats['vram_free_mb'] = val
-                elif 'total' in nombre: stats['vram_total_mb'] = val
-            except ValueError: pass
-
-        for hijo in nodo.get("Children", []):
-            self.extraer_datos_http(hijo, stats)
-
-    def actualizar_datos(self):
-        # 1. CPU
-        self.lbl_cpu_uso.setText(f"CPU Uso Total: {psutil.cpu_percent()}%")
-
-        # 2. RAM
-        ram = psutil.virtual_memory()
+        ram = datos['ram']
         self.lbl_ram.setText(f"RAM: {ram.used / GB:.1f} GB usados / {ram.available / GB:.1f} GB libres")
         self.bar_ram.setValue(int(ram.percent))
         self.bar_ram.setFormat(f"Ocupado: {ram.percent}%")
 
-        # 3. SENSORES
-        stats = {
-            "cpu_temp": None, "gpu_temp": None, "gpu_uso": None, "vram_uso": None, 
-            "vram_used_mb": None, "vram_free_mb": None, "vram_total_mb": None,
-            "core_temps": {}
-        }
-        datos_leidos = False
-
-        if not self.wmi_lhm:
-            try: self.wmi_lhm = wmi.WMI(namespace=r"root\LibreHardwareMonitor")
-            except Exception: pass
-        if self.wmi_lhm: datos_leidos = self.extraer_wmi(self.wmi_lhm, stats)
-
-        if not datos_leidos:
-            try:
-                req = urllib.request.urlopen("http://localhost:8085/data.json", timeout=0.3)
-                data = json.loads(req.read().decode())
-                self.extraer_datos_http(data, stats)
-                if any(v is not None for v in stats.values()) or stats["core_temps"]: 
-                    datos_leidos = True
-            except Exception: pass
-
-        if not datos_leidos:
-            if not self.wmi_ohm:
-                try: self.wmi_ohm = wmi.WMI(namespace=r"root\OpenHardwareMonitor")
-                except Exception: pass
-            if self.wmi_ohm: datos_leidos = self.extraer_wmi(self.wmi_ohm, stats)
-
-        # 4. ACTUALIZAR INTERFAZ SENSORES
-        if datos_leidos:
+        stats = datos['stats']
+        if datos['datos_leidos']:
             if stats["cpu_temp"] is not None: self.lbl_cpu_temp.setText(f"CPU Temp: {int(stats['cpu_temp'])}°C")
             if stats["gpu_uso"] is not None:  self.lbl_gpu_uso.setText(f"GPU Uso: {int(stats['gpu_uso'])}%")
             if stats["gpu_temp"] is not None: self.lbl_gpu_temp.setText(f"GPU Temp: {int(stats['gpu_temp'])}°C")
@@ -337,14 +401,10 @@ class MonitorSistema(QMainWindow):
             self.bar_vram.setValue(0)
             self.bar_vram.setFormat("Sin conexión")
 
-        # 5. ACTUALIZAR GRILLA CPU
-        if self.detalles_visibles:
-            usos_cores = psutil.cpu_percent(percpu=True)
-            global_freq = psutil.cpu_freq()
-            global_ghz = (global_freq.current / 1000.0) if global_freq else 0.0
-            
-            try: freqs = psutil.cpu_freq(percpu=True)
-            except Exception: freqs = []
+        if self.detalles_visibles and 'usos_cores' in datos:
+            usos_cores = datos['usos_cores']
+            global_ghz = datos['global_ghz']
+            freqs = datos['freqs']
 
             for i, (uso, lbl) in enumerate(zip(usos_cores, self.labels_cores)):
                 freq_ghz = (freqs[i].current / 1000.0) if (freqs and i < len(freqs) and freqs[i]) else 0.0
@@ -355,46 +415,28 @@ class MonitorSistema(QMainWindow):
 
                 lbl.setText(f"{i+1}° {freq_ghz:.2f}GHz | {uso:02.0f}% | {temp_str}")
 
-        # 6. DISCOS (Iconos + Lectura/Escritura WMI)
-        disk_io_data = {}
-        if self.detalles_visibles and self.wmi_cimv2:
-            try:
-                for d in self.wmi_cimv2.Win32_PerfFormattedData_PerfDisk_LogicalDisk():
-                    disk_io_data[d.Name] = {
-                        'read': float(d.DiskReadBytesPersec) / MB,
-                        'write': float(d.DiskWriteBytesPersec) / MB,
-                        'act': min(100.0, float(d.PercentDiskTime))
-                    }
-            except Exception: pass
+        for part in datos['particiones']:
+            texto = f"[{part['device']}] Usado: {part['used']/GB:.1f}GB | Libre: {part['free']/GB:.1f}GB | Total: {part['total']/GB:.1f}GB"
+            
+            if self.detalles_visibles:
+                drive_letter = part['mountpoint'][:2]
+                if drive_letter in datos.get('disk_io', {}):
+                    io = datos['disk_io'][drive_letter]
+                    texto += f"  |  Act: {io['act']:.0f}%  L: {io['read']:.1f} MB/s  E: {io['write']:.1f} MB/s"
 
-        for part in psutil.disk_partitions():
-            if 'cdrom' in part.opts or not part.fstype: continue
-            try:
-                usage = psutil.disk_usage(part.mountpoint)
-                pct = usage.percent
+            if part['device'] not in self.disk_widgets:
+                container_disco, lbl = self.crear_label_con_icono(texto, 'fa5s.hdd', 14)
+                barra = QProgressBar()
+                barra.setFixedHeight(14)
                 
-                texto = f"[{part.device}] Usado: {usage.used/GB:.1f}GB | Libre: {usage.free/GB:.1f}GB | Total: {usage.total/GB:.1f}GB"
+                self.layout.insertWidget(self.layout.count() - 1, container_disco)
+                self.layout.insertWidget(self.layout.count() - 1, barra)
                 
-                if self.detalles_visibles:
-                    drive_letter = part.mountpoint[:2]
-                    if drive_letter in disk_io_data:
-                        io = disk_io_data[drive_letter]
-                        texto += f"  |  Act: {io['act']:.0f}%  L: {io['read']:.1f} MB/s  E: {io['write']:.1f} MB/s"
-
-                if part.device not in self.disk_widgets:
-                    container_disco, lbl = self.crear_label_con_icono(texto, 'fa5s.hdd', 14)
-                    barra = QProgressBar()
-                    barra.setFixedHeight(14)
-                    
-                    self.layout.insertWidget(self.layout.count() - 1, container_disco)
-                    self.layout.insertWidget(self.layout.count() - 1, barra)
-                    
-                    self.disk_widgets[part.device] = {'lbl': lbl, 'barra': barra}
-                else:
-                    self.disk_widgets[part.device]['lbl'].setText(texto)
-                    self.disk_widgets[part.device]['barra'].setValue(int(pct))
-                    self.disk_widgets[part.device]['barra'].setFormat(f"Capacidad Ocupada: {pct}%")
-            except PermissionError: pass
+                self.disk_widgets[part['device']] = {'lbl': lbl, 'barra': barra}
+            else:
+                self.disk_widgets[part['device']]['lbl'].setText(texto)
+                self.disk_widgets[part['device']]['barra'].setValue(int(part['percent']))
+                self.disk_widgets[part['device']]['barra'].setFormat(f"Capacidad Ocupada: {part['percent']}%")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
